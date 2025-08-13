@@ -36,6 +36,7 @@ import threading
 
 import geometry_msgs.msg
 import rclpy
+from select import select
 
 if sys.platform == 'win32':
     import msvcrt
@@ -102,14 +103,18 @@ speedBindings = {
 }
 
 
-def getKey(settings):
+def getKey(settings, timeout):
     if sys.platform == 'win32':
         # getwch() returns a string on Windows
         key = msvcrt.getwch()
     else:
         tty.setraw(sys.stdin.fileno())
         # sys.stdin.read() returns a string on Linux
-        key = sys.stdin.read(1)
+        rlist, _, _ = select([sys.stdin], [], [], timeout)
+        if rlist:
+            key = sys.stdin.read(1)
+        else:
+            key = ''
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
     return key
 
@@ -140,6 +145,9 @@ def main():
     # parameters
     stamped = node.declare_parameter('stamped', False).value
     frame_id = node.declare_parameter('frame_id', '').value
+
+    key_timeout = node.declare_parameter('~key_timeout', 0.5).value
+
     if not stamped and frame_id:
         raise Exception("'frame_id' can only be set when 'stamped' is True")
 
@@ -174,7 +182,7 @@ def main():
         print(msg)
         print(vels(speed, turn))
         while True:
-            key = getKey(settings)
+            key = getKey(settings, key_timeout)
             if key in moveBindings.keys():
                 x = moveBindings[key][0]
                 y = moveBindings[key][1]
@@ -189,6 +197,10 @@ def main():
                     print(msg)
                 status = (status + 1) % 15
             else:
+                # Skip updating cmd_vel if key timeout and robot already
+                # stopped.
+                if key == '' and x == 0 and y == 0 and z == 0 and th == 0:
+                    continue
                 x = 0.0
                 y = 0.0
                 z = 0.0
