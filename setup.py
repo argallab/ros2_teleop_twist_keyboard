@@ -1,13 +1,13 @@
 from setuptools import setup
 
-package_name = 'teleop_twist_keyboard'
+package_name = 'ros2_teleop_twist_keyboard'
 
 setup(
     name=package_name,
     version='2.4.0',
     packages=[],
     py_modules=[
-        'teleop_twist_keyboard'
+        'ros2_teleop_twist_keyboard'
     ],
     data_files=[
         ('share/ament_index/resource_index/packages',
